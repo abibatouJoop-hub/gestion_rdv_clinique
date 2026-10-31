@@ -1,5 +1,6 @@
 package sn.isi.clinique_api.catalogue.internal;
 
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
@@ -29,7 +30,9 @@ public class SpecialiteController {
     }
 
     @GetMapping
-    public PagedModel<SpecialiteDto> lister(@PageableDefault(size = 20, sort = "nom") Pageable pageable) {
+    public PagedModel<SpecialiteDto> lister(
+            @ParameterObject
+            @PageableDefault(size = 20, sort = "nom") Pageable pageable) {
         return new PagedModel<>(service.lister(pageable));
     }
 

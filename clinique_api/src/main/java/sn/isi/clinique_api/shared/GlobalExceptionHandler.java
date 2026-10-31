@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -47,5 +48,11 @@ public class GlobalExceptionHandler {
     private ResponseEntity<ErreurReponse> reponse(HttpStatus statut, String message, List<String> details) {
         ErreurReponse corps = new ErreurReponse(statut.value(), message, Instant.now(), details);
         return ResponseEntity.status(statut).body(corps);
+    }
+
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<ErreurReponse> triInvalide(PropertyReferenceException ex) {
+        return reponse(HttpStatus.BAD_REQUEST,
+                "Critère de tri invalide : " + ex.getPropertyName(), List.of());
     }
 }
