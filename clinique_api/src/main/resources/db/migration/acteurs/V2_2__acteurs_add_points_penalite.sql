@@ -1,0 +1,2 @@
+ALTER TABLE patient
+    ADD COLUMN points_penalite INTEGER NOT NULL DEFAULT 0;
