@@ -1,4 +1,9 @@
 package sn.isi.clinique_api.shared;
 
-public class NotFoundException {
+
+public class NotFoundException extends RuntimeException {
+
+    public NotFoundException(String message) {
+        super(message);
+    }
 }

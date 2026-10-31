@@ -1,4 +1,5 @@
 package sn.isi.clinique_api.catalogue.api;
 
-public class SpecialiteDto {
+
+public record SpecialiteDto(Long id, String nom) {
 }

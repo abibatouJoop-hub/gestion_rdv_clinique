@@ -1,4 +1,51 @@
 package sn.isi.clinique_api.shared;
 
+
+import java.time.Instant;
+import java.util.List;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErreurReponse> introuvable(NotFoundException ex) {
+        return reponse(HttpStatus.NOT_FOUND, ex.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(ConflitException.class)
+    public ResponseEntity<ErreurReponse> conflit(ConflitException ex) {
+        return reponse(HttpStatus.CONFLICT, ex.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErreurReponse> integrite(DataIntegrityViolationException ex) {
+        return reponse(HttpStatus.CONFLICT,
+                "Opération impossible : des données sont liées à cet élément", List.of());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErreurReponse> validation(MethodArgumentNotValidException ex) {
+        List<String> details = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> e.getField() + " : " + e.getDefaultMessage())
+                .toList();
+        return reponse(HttpStatus.BAD_REQUEST, "Données invalides", details);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErreurReponse> corpsIllisible(HttpMessageNotReadableException ex) {
+        return reponse(HttpStatus.BAD_REQUEST, "Corps de requête illisible ou mal formé", List.of());
+    }
+
+    private ResponseEntity<ErreurReponse> reponse(HttpStatus statut, String message, List<String> details) {
+        ErreurReponse corps = new ErreurReponse(statut.value(), message, Instant.now(), details);
+        return ResponseEntity.status(statut).body(corps);
+    }
 }
