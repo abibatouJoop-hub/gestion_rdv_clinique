@@ -9,6 +9,9 @@ import sn.isi.clinique_api.catalogue.api.MedecinDto;
 import sn.isi.clinique_api.catalogue.api.MedecinRequest;
 import sn.isi.clinique_api.shared.NotFoundException;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 @Service
 @Transactional(readOnly = true)
 public class MedecinService {
@@ -21,10 +24,24 @@ public class MedecinService {
         this.specialiteRepository = specialiteRepository;
     }
 
-    public Page<MedecinDto> rechercher(String nom, Long specialiteId, Pageable pageable) {
-        // une chaîne vide correspond à "tous les noms" (évite un paramètre null dans la requête)
+    public Page<MedecinDto> rechercher(String nom, Long specialiteId, LocalDate date,
+                                       Boolean disponible, Pageable pageable) {
         String critere = (nom == null) ? "" : nom.trim();
-        return repository.rechercher(critere, specialiteId, pageable).map(this::versDto);
+        boolean seulementLibres = Boolean.TRUE.equals(disponible);
+        boolean filtrerCreneaux = seulementLibres || date != null;
+
+        LocalDateTime debutMin = (date != null) ? date.atStartOfDay() : LocalDateTime.of(1900, 1, 1, 0, 0);
+        LocalDateTime debutMax = (date != null) ? date.plusDays(1).atStartOfDay() : LocalDateTime.of(9999, 12, 31, 0, 0);
+
+        // un créneau "disponible" ne peut pas être dans le passé
+        if (seulementLibres) {
+            LocalDateTime maintenant = LocalDateTime.now();
+            if (debutMin.isBefore(maintenant)) {
+                debutMin = maintenant;
+            }
+        }
+        return repository.rechercher(critere, specialiteId, filtrerCreneaux, seulementLibres,
+                debutMin, debutMax, pageable).map(this::versDto);
     }
 
     public MedecinDto trouver(Long id) {

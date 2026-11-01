@@ -9,6 +9,7 @@ import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -54,5 +55,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErreurReponse> triInvalide(PropertyReferenceException ex) {
         return reponse(HttpStatus.BAD_REQUEST,
                 "Critère de tri invalide : " + ex.getPropertyName(), List.of());
+    }
+
+    @ExceptionHandler(RequeteInvalideException.class)
+    public ResponseEntity<ErreurReponse> requeteInvalide(RequeteInvalideException ex) {
+        return reponse(HttpStatus.BAD_REQUEST, ex.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErreurReponse> accesConcurrent(ObjectOptimisticLockingFailureException ex) {
+        return reponse(HttpStatus.CONFLICT,
+                "Cet élément vient d'être modifié par quelqu'un d'autre, veuillez réessayer", List.of());
     }
 }
