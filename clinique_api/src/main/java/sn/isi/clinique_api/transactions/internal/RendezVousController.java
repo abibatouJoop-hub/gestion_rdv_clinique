@@ -20,6 +20,8 @@ import sn.isi.clinique_api.transactions.api.RendezVousDto;
 import sn.isi.clinique_api.transactions.api.RendezVousRequest;
 import sn.isi.clinique_api.transactions.api.StatutRendezVous;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/rendez-vous")
 public class RendezVousController {
@@ -63,5 +65,10 @@ public class RendezVousController {
     @ResponseStatus(HttpStatus.CREATED)
     public AttenteDto inscrireAttente(@Valid @RequestBody RendezVousRequest requete) {
         return service.inscrireAttente(requete);
+    }
+
+    @PostMapping("/rappels")
+    public Map<String, Integer> declencherRappels() {
+        return Map.of("rappelsEnvoyes", service.envoyerRappels());
     }
 }

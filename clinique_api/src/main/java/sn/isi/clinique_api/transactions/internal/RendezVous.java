@@ -42,6 +42,9 @@ public class RendezVous {
     @Column(name = "cree_le", nullable = false)
     private LocalDateTime creeLe;
 
+    @Column(name = "rappel_envoye", nullable = false)
+    private boolean rappelEnvoye = false;
+
     protected RendezVous() {
         // requis par JPA
     }
@@ -87,5 +90,13 @@ public class RendezVous {
 
     public void setStatut(StatutRendezVous statut) {
         this.statut = statut;
+    }
+
+    public boolean isRappelEnvoye() {
+        return rappelEnvoye;
+    }
+
+    public void marquerRappelEnvoye() {
+        this.rappelEnvoye = true;
     }
 }

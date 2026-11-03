@@ -1,6 +1,7 @@
 package sn.isi.clinique_api.transactions.internal;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,4 +35,7 @@ public interface RendezVousRepository extends JpaRepository<RendezVous, Long> {
                                 @Param("filtrerStatut") boolean filtrerStatut,
                                 @Param("statut") StatutRendezVous statut,
                                 Pageable pageable);
+
+    List<RendezVous> findByStatutAndRappelEnvoyeFalseAndDebutBetween(
+            StatutRendezVous statut, LocalDateTime min, LocalDateTime max);
 }

@@ -6,6 +6,7 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import sn.isi.clinique_api.notifications.api.TypeNotification;
+import sn.isi.clinique_api.transactions.api.RappelRendezVous;
 import sn.isi.clinique_api.transactions.api.RendezVousAnnule;
 import sn.isi.clinique_api.transactions.api.RendezVousPris;
 
@@ -31,5 +32,11 @@ class NotificationListener {
     void surRendezVousAnnule(RendezVousAnnule evenement) {
         service.enregistrer(evenement.patientId(), TypeNotification.RDV_ANNULE,
                 "Votre rendez-vous du " + evenement.debut().format(FORMAT) + " a été annulé.");
+    }
+
+    @ApplicationModuleListener
+    void surRappel(RappelRendezVous evenement) {
+        service.enregistrer(evenement.patientId(), TypeNotification.RDV_RAPPEL,
+                "Rappel : vous avez rendez-vous le " + evenement.debut().format(FORMAT) + ".");
     }
 }

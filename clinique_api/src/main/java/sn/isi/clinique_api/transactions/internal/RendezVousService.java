@@ -16,11 +16,7 @@ import sn.isi.clinique_api.catalogue.api.CreneauApi;
 import sn.isi.clinique_api.catalogue.api.CreneauDto;
 import sn.isi.clinique_api.shared.ConflitException;
 import sn.isi.clinique_api.shared.NotFoundException;
-import sn.isi.clinique_api.transactions.api.AttenteDto;
-import sn.isi.clinique_api.transactions.api.RendezVousDto;
-import sn.isi.clinique_api.transactions.api.RendezVousPris;
-import sn.isi.clinique_api.transactions.api.RendezVousRequest;
-import sn.isi.clinique_api.transactions.api.StatutRendezVous;
+import sn.isi.clinique_api.transactions.api.*;
 
 @Service
 @Transactional(readOnly = true)
@@ -228,5 +224,24 @@ public class RendezVousService {
     private RendezVousDto versDto(RendezVous r) {
         return new RendezVousDto(r.getId(), r.getPatientId(), r.getCreneauId(), r.getMedecinId(),
                 r.getDebut(), r.getFin(), r.getStatut());
+    }
+
+    // =====================================================================
+    // Rappels J-1
+    // =====================================================================
+
+    /** Envoie un rappel pour chaque rendez-vous confirmé qui a lieu dans les 24 prochaines heures. */
+    @Transactional
+    public int envoyerRappels() {
+        LocalDateTime maintenant = LocalDateTime.now();
+        List<RendezVous> aRappeler = repository.findByStatutAndRappelEnvoyeFalseAndDebutBetween(
+                StatutRendezVous.CONFIRME, maintenant, maintenant.plusHours(24));
+
+        for (RendezVous rdv : aRappeler) {
+            rdv.marquerRappelEnvoye();
+            evenements.publishEvent(
+                    new RappelRendezVous(rdv.getId(), rdv.getPatientId(), rdv.getDebut()));
+        }
+        return aRappeler.size();
     }
 }
