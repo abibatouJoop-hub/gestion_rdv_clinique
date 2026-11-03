@@ -12,10 +12,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import sn.isi.clinique_api.notifications.api.NotificationDto;
 
 @RestController
 @RequestMapping("/api/notifications")
+@Tag(name = "Notifications", description = "Notifications créées automatiquement à partir des événements de rendez-vous")
 public class NotificationController {
 
     private final NotificationService service;
@@ -25,8 +30,15 @@ public class NotificationController {
     }
 
     @GetMapping
+    @Operation(summary = "Lister les notifications",
+            description = "Les notifications sont créées en réponse aux événements : rendez-vous confirmé, annulé, "
+                    + "ou rappel la veille. Les plus récentes sont renvoyées en premier.")
+    @ApiResponse(responseCode = "200", description = "Page de notifications")
+    @ApiResponse(responseCode = "400", description = "Critère de tri invalide")
     public PagedModel<NotificationDto> lister(
+            @Parameter(description = "Identifiant du patient", example = "1")
             @RequestParam(required = false) Long patientId,
+            @Parameter(description = "true : seulement les notifications non lues")
             @RequestParam(defaultValue = "false") boolean nonLues,
             @ParameterObject @PageableDefault(size = 20, sort = "creeLe",
                     direction = Sort.Direction.DESC) Pageable pageable) {
@@ -34,6 +46,9 @@ public class NotificationController {
     }
 
     @PatchMapping("/{id}/lue")
+    @Operation(summary = "Marquer une notification comme lue")
+    @ApiResponse(responseCode = "200", description = "Notification marquée comme lue")
+    @ApiResponse(responseCode = "404", description = "Notification introuvable")
     public NotificationDto marquerLue(@PathVariable Long id) {
         return service.marquerLue(id);
     }
