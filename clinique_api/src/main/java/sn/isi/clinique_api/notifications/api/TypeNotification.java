@@ -1,4 +1,6 @@
 package sn.isi.clinique_api.notifications.api;
 
-public class TypeNotification {
+public enum TypeNotification {
+    RDV_CONFIRME,
+    RDV_ANNULE
 }
