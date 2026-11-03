@@ -12,6 +12,8 @@ import sn.isi.clinique_api.shared.ConflitException;
 import sn.isi.clinique_api.shared.NotFoundException;
 import sn.isi.clinique_api.shared.RequeteInvalideException;
 
+import java.util.Optional;
+
 @Service
 @Transactional(readOnly = true)
 public class PatientService implements PatientApi {
@@ -94,5 +96,10 @@ public class PatientService implements PatientApi {
     private PatientDto versDto(Patient p) {
         return new PatientDto(p.getId(), p.getNom(), p.getPrenom(), p.getEmail(), p.getTelephone(),
                 p.getPointsPenalite(), p.getPointsPenalite() >= SEUIL_BLOCAGE);
+    }
+
+    @Override
+    public Optional<PatientDto> trouverSiExiste(Long id) {
+        return repository.findById(id).map(this::versDto);
     }
 }
