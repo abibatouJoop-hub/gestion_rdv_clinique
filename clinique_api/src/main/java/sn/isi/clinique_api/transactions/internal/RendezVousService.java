@@ -112,7 +112,7 @@ public class RendezVousService {
             patients.ajouterPenalite(rdv.getPatientId(), PENALITE_ANNULATION_TARDIVE);
         }
         creneaux.liberer(rdv.getCreneauId());
-        evenements.publishEvent(new RendezVousPris.RendezVousAnnule(rdv.getId(), rdv.getPatientId(), rdv.getDebut()));
+        evenements.publishEvent(new RendezVousAnnule(rdv.getId(), rdv.getPatientId(), rdv.getDebut()));
 
         promouvoirListeAttente(rdv);
         return versDto(rdv);
