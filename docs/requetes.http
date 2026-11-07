@@ -1,0 +1,206 @@
+### ============================================================
+### Scénarios métier de l'API Clinique
+### Exécuter de haut en bas (bouton vert à gauche de chaque requête).
+### Dates en janvier 2027 : les remplacer si elles sont passées.
+### ============================================================
+
+@host = http://localhost:8080
+
+### ---------- 1. Spécialités ----------
+
+### Lister les spécialités (6 chargées par Flyway)
+GET {{host}}/api/specialites
+
+### Créer une spécialité
+POST {{host}}/api/specialites
+Content-Type: application/json
+
+{ "nom": "Neurologie-{{$timestamp}}" }
+
+### Erreur 400 : nom vide
+POST {{host}}/api/specialites
+Content-Type: application/json
+
+{ "nom": "" }
+
+### Erreur 404 : spécialité inconnue
+GET {{host}}/api/specialites/999999
+
+### ---------- 2. Médecin, patients, créneaux ----------
+
+### Créer un médecin
+POST {{host}}/api/medecins
+Content-Type: application/json
+
+{ "nom": "Diallo-{{$timestamp}}", "prenom": "Awa", "specialiteId": 1 }
+
+> {% client.global.set("medecinId", response.body.id); %}
+
+### Créer le patient A
+POST {{host}}/api/patients
+Content-Type: application/json
+
+{ "nom": "Ndiaye", "prenom": "Fatou", "email": "a-{{$uuid}}@mail.com", "telephone": "771234567" }
+
+> {% client.global.set("patientA", response.body.id); %}
+
+### Créer le patient B
+POST {{host}}/api/patients
+Content-Type: application/json
+
+{ "nom": "Sow", "prenom": "Moussa", "email": "b-{{$uuid}}@mail.com" }
+
+> {% client.global.set("patientB", response.body.id); %}
+
+### Erreur 400 : e-mail invalide
+POST {{host}}/api/patients
+Content-Type: application/json
+
+{ "nom": "Test", "prenom": "Test", "email": "pas-un-email" }
+
+### Créneau 1 (09:00)
+POST {{host}}/api/creneaux
+Content-Type: application/json
+
+{ "medecinId": {{medecinId}}, "debut": "2027-01-18T09:00:00", "fin": "2027-01-18T09:30:00" }
+
+> {% client.global.set("creneau1", response.body.id); %}
+
+### Créneau 2 (10:00)
+POST {{host}}/api/creneaux
+Content-Type: application/json
+
+{ "medecinId": {{medecinId}}, "debut": "2027-01-18T10:00:00", "fin": "2027-01-18T10:30:00" }
+
+> {% client.global.set("creneau2", response.body.id); %}
+
+### Créneau 3 (11:00)
+POST {{host}}/api/creneaux
+Content-Type: application/json
+
+{ "medecinId": {{medecinId}}, "debut": "2027-01-18T11:00:00", "fin": "2027-01-18T11:30:00" }
+
+> {% client.global.set("creneau3", response.body.id); %}
+
+### Créneau 4 (12:00)
+POST {{host}}/api/creneaux
+Content-Type: application/json
+
+{ "medecinId": {{medecinId}}, "debut": "2027-01-18T12:00:00", "fin": "2027-01-18T12:30:00" }
+
+> {% client.global.set("creneau4", response.body.id); %}
+
+### Créneau 5 (14:00)
+POST {{host}}/api/creneaux
+Content-Type: application/json
+
+{ "medecinId": {{medecinId}}, "debut": "2027-01-18T14:00:00", "fin": "2027-01-18T14:30:00" }
+
+> {% client.global.set("creneau5", response.body.id); %}
+
+### Erreur 409 : chevauche le créneau de 09:00
+POST {{host}}/api/creneaux
+Content-Type: application/json
+
+{ "medecinId": {{medecinId}}, "debut": "2027-01-18T09:15:00", "fin": "2027-01-18T09:45:00" }
+
+### Erreur 400 : fin avant le début
+POST {{host}}/api/creneaux
+Content-Type: application/json
+
+{ "medecinId": {{medecinId}}, "debut": "2027-01-18T16:00:00", "fin": "2027-01-18T15:00:00" }
+
+### ---------- 3. Recherche multicritère ----------
+
+### Médecins disponibles
+GET {{host}}/api/medecins?disponible=true
+
+### Médecins ayant un créneau le 18/01/2027
+GET {{host}}/api/medecins?date=2027-01-18
+
+### Médecins par spécialité, triés par nom
+GET {{host}}/api/medecins?specialiteId=1&sort=nom,desc
+
+### Créneaux libres du médecin
+GET {{host}}/api/creneaux?medecinId={{medecinId}}&libre=true
+
+### ---------- 4. Prise de rendez-vous ----------
+
+### A prend le créneau 1 (201, CONFIRME)
+POST {{host}}/api/rendez-vous
+Content-Type: application/json
+
+{ "patientId": {{patientA}}, "creneauId": {{creneau1}} }
+
+> {% client.global.set("rdv1", response.body.id); %}
+
+### Erreur 409 : B veut le même créneau (déjà réservé)
+POST {{host}}/api/rendez-vous
+Content-Type: application/json
+
+{ "patientId": {{patientB}}, "creneauId": {{creneau1}} }
+
+### ---------- 5. Liste d'attente et annulation ----------
+
+### B s'inscrit en liste d'attente sur le créneau 1 (position 1)
+POST {{host}}/api/rendez-vous/attente
+Content-Type: application/json
+
+{ "patientId": {{patientB}}, "creneauId": {{creneau1}} }
+
+### A annule son rendez-vous (plus de 24 h avant : aucune pénalité)
+POST {{host}}/api/rendez-vous/{{rdv1}}/annulation
+
+### B a obtenu le créneau automatiquement
+GET {{host}}/api/rendez-vous?patientId={{patientB}}&statut=CONFIRME
+
+### A n'a aucun point de pénalité
+GET {{host}}/api/patients/{{patientA}}
+
+### ---------- 6. Quota de 3 rendez-vous ----------
+
+### A prend le créneau 2
+POST {{host}}/api/rendez-vous
+Content-Type: application/json
+
+{ "patientId": {{patientA}}, "creneauId": {{creneau2}} }
+
+### A prend le créneau 3
+POST {{host}}/api/rendez-vous
+Content-Type: application/json
+
+{ "patientId": {{patientA}}, "creneauId": {{creneau3}} }
+
+### A prend le créneau 4 (3e rendez-vous)
+POST {{host}}/api/rendez-vous
+Content-Type: application/json
+
+{ "patientId": {{patientA}}, "creneauId": {{creneau4}} }
+
+### Erreur 409 : quota atteint (4e rendez-vous)
+POST {{host}}/api/rendez-vous
+Content-Type: application/json
+
+{ "patientId": {{patientA}}, "creneauId": {{creneau5}} }
+
+### ---------- 7. Notifications et rappels ----------
+
+### Notifications de A (RDV_CONFIRME, RDV_ANNULE...) ; attendre une seconde si la liste est vide
+GET {{host}}/api/notifications?patientId={{patientA}}
+
+### Notifications non lues de B
+GET {{host}}/api/notifications?patientId={{patientB}}&nonLues=true
+
+### Marquer la notification n° 1 comme lue
+PATCH {{host}}/api/notifications/1/lue
+
+### Déclencher les rappels J-1 (concerne les rendez-vous dans les 24 prochaines heures)
+POST {{host}}/api/rendez-vous/rappels
+
+### ---------- 8. Rendez-vous ----------
+
+### Lister les rendez-vous confirmés de A
+GET {{host}}/api/rendez-vous?patientId={{patientA}}&statut=CONFIRME
+
+### Erreur 404 : rendez-vous inconnu
+GET {{host}}/api/rendez-vous/999999
