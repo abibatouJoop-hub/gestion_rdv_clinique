@@ -144,3 +144,33 @@ index unique partiel (`un seul rendez-vous CONFIRME par créneau`) empêchent un
 
 &#x20; le projet démarre sans configuration ; elle est surchargée par `.env` pour tout usage réel.
 
+
+## Module securite et authentification
+
+Un sixième module, `securite`, porte l'authentification JWT. Il dépend de `acteurs.api`
+(pour retrouver un compte) et de `shared`. Aucun autre module n'en dépend, sauf pour une
+interface publique, `ContexteSecurite`, qui indique si l'utilisateur courant est un médecin.
+
+Les comptes (`utilisateur`) sont dans le module `acteurs` : une identité de connexion est
+une personne du système, au même titre qu'un patient. Un compte MEDECIN référence son
+médecin par un simple identifiant (`medecin_id`), sans relation JPA, comme tous les liens
+entre modules.
+
+### Décisions
+
+| Décision | Justification |
+|---|---|
+| JWT sans session côté serveur | API REST sans état, adaptée à un frontend Angular séparé |
+| Règles par rôle centralisées dans `SecurityConfig`, `denyAll()` par défaut | Une route oubliée est fermée, pas ouverte |
+| Filtrage « médecin = ses données » côté serveur | Cacher un bouton dans Angular ne protège rien : l'API doit refuser |
+| 404 plutôt que 403 sur la ressource d'un confrère | Ne révèle pas l'existence de la ressource |
+| Notification à deux destinataires (patient ou médecin) | Le module `notifications` écoute les mêmes événements, `transactions` ne change pas |
+| Événements enrichis de `medecinId` | `notifications` n'a pas besoin d'appeler `transactions` |
+| Mots de passe hachés avec BCrypt, secrets par variables d'environnement | Rien de sensible dans le dépôt |
+
+### Limites connues
+
+- Un jeton reste valable jusqu'à son expiration, même si le compte est désactivé entre-temps
+  (durée courte, 60 minutes par défaut).
+- Un médecin peut lire un patient par son identifiant (pour afficher son nom).
+- Pas de renouvellement de jeton (refresh token) ni de changement de mot de passe.

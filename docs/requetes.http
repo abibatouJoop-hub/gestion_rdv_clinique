@@ -6,6 +6,47 @@
 
 @host = http://localhost:8080
 
+@baseUrl = http://localhost:8081
+@adminEmail = admin@clinique.sn
+@adminMotDePasse = REMPLACER_PAR_TON_MOT_DE_PASSE
+
+### 1. Connexion ADMIN : enregistre le jeton pour les requêtes suivantes
+POST {{baseUrl}}/api/auth/connexion
+Content-Type: application/json
+
+{ "email": "{{adminEmail}}", "motDePasse": "{{adminMotDePasse}}" }
+
+> {% client.global.set("jeton", response.body.token); %}
+
+### 2. Qui suis-je ?
+GET {{baseUrl}}/api/auth/moi
+Authorization: Bearer {{jeton}}
+
+### 3. Créer un compte secrétaire (ADMIN)
+POST {{baseUrl}}/api/utilisateurs
+Authorization: Bearer {{jeton}}
+Content-Type: application/json
+
+{ "email": "secretaire@clinique.sn", "motDePasse": "Motdepasse1", "role": "SECRETAIRE" }
+
+### 4. Créer le compte d'un médecin (ADMIN) : medecinId = id du médecin déjà enregistré
+POST {{baseUrl}}/api/utilisateurs
+Authorization: Bearer {{jeton}}
+Content-Type: application/json
+
+{ "email": "dr.ndiaye@clinique.sn", "motDePasse": "Motdepasse1", "role": "MEDECIN", "medecinId": 1 }
+
+### 5. Lister les comptes (ADMIN)
+GET {{baseUrl}}/api/utilisateurs
+Authorization: Bearer {{jeton}}
+
+### 6. Désactiver un compte (ADMIN)
+PATCH {{baseUrl}}/api/utilisateurs/2/desactivation
+Authorization: Bearer {{jeton}}
+
+### 7. Sans jeton : doit renvoyer 401
+GET {{baseUrl}}/api/rendez-vous
+
 ### ---------- 1. Spécialités ----------
 
 ### Lister les spécialités (6 chargées par Flyway)

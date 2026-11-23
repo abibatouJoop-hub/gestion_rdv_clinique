@@ -151,7 +151,47 @@ Chaque module est un package racine (`sn.isi.clinique\_api.<module>`) avec deux 
 
 Erreurs : un seul format JSON (`code`, `message`, `horodatage`, `details`) avec les codes 400, 404 et 409.
 
+## Authentification et rôles
 
+L'API est protégée par un jeton JWT. Toutes les routes exigent un jeton, sauf la
+connexion, Swagger et `/actuator/health`.
+
+| Rôle | Droits |
+|---|---|
+| ADMIN | Tout, y compris la création des comptes (`/api/utilisateurs`) |
+| SECRETAIRE | Patients, médecins, spécialités, créneaux, rendez-vous, liste d'attente, notifications |
+| MEDECIN | Lecture seule de **ses propres** rendez-vous et notifications, marquer un patient absent |
+
+Les patients ne se connectent pas : ils reçoivent les notifications de la clinique.
+
+### Variables d'environnement
+
+| Variable | Rôle |
+|---|---|
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Compte ADMIN créé au premier démarrage s'il n'en existe aucun |
+| `JWT_SECRET` | Clé de signature des jetons (32 caractères minimum, l'application refuse de démarrer sinon) |
+| `JWT_EXPIRATION_MINUTES` | Durée de validité d'un jeton (60 par défaut) |
+
+Générer un secret (PowerShell) :
+
+    $b = New-Object byte[] 48; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)
+
+### Utilisation
+
+1. `POST /api/auth/connexion` avec `{"email": "...", "motDePasse": "..."}` renvoie un `token`.
+2. Envoyer ensuite `Authorization: Bearer <token>` à chaque requête.
+3. Dans Swagger, le bouton **Authorize** permet de coller le jeton une fois pour toutes.
+4. Flux d'un nouveau médecin : la secrétaire enregistre le médecin, puis l'ADMIN lui crée son
+   compte (`POST /api/utilisateurs`, rôle `MEDECIN`, avec son `medecinId`).
+
+### Codes d'erreur
+
+| Code | Signification |
+|---|---|
+| 401 `NON_AUTHENTIFIE` | Jeton absent, invalide ou expiré |
+| 401 `IDENTIFIANTS_INVALIDES` | E-mail ou mot de passe incorrect |
+| 403 `ACCES_REFUSE` | Rôle insuffisant pour cette action |
+| 404 | Ressource inexistante **ou appartenant à un autre médecin** |
 
 \## Tests
 
