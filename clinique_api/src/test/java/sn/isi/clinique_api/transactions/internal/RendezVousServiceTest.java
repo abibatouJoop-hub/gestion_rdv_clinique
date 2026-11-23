@@ -279,4 +279,39 @@ class RendezVousServiceTest {
 
         verify(attenteRepository, never()).save(any());
     }
+
+    @Test
+    void marquerPresent_passeLeRendezVousAHonoreSansPenalite() {
+        RendezVous rdv = unRdv(1, 10, LocalDateTime.now().minusHours(2));
+        when(repository.findById(5L)).thenReturn(Optional.of(rdv));
+
+        RendezVousDto resultat = service.marquerPresent(5L);
+
+        assertThat(resultat.statut()).isEqualTo(StatutRendezVous.HONORE);
+        verify(patients, never()).ajouterPenalite(anyLong(), anyInt());   // présent = aucune pénalité
+    }
+
+    @Test
+    void marquerPresent_refuseSiLeRendezVousNaPasEncoreEuLieu() {
+        RendezVous rdv = unRdv(1, 10, LocalDateTime.now().plusDays(1));
+        when(repository.findById(5L)).thenReturn(Optional.of(rdv));
+
+        assertThatThrownBy(() -> service.marquerPresent(5L))
+                .isInstanceOf(ConflitException.class)
+                .hasMessageContaining("pas encore eu lieu");
+
+        assertThat(rdv.getStatut()).isEqualTo(StatutRendezVous.CONFIRME);
+    }
+
+    @Test
+    void marquerPresent_refuseUnRendezVousDejaAnnule() {
+        RendezVous rdv = unRdv(1, 10, LocalDateTime.now().minusHours(2));
+        rdv.setStatut(StatutRendezVous.ANNULE);
+        when(repository.findById(5L)).thenReturn(Optional.of(rdv));
+
+        assertThatThrownBy(() -> service.marquerPresent(5L))
+                .isInstanceOf(ConflitException.class)
+                .hasMessageContaining("confirmé");
+    }
+
 }

@@ -122,4 +122,39 @@ class TransactionsIntegrationTest extends IntegrationTestBase {
         assertThat(jdbc.queryForObject("select statut from rendez_vous where id = ?", String.class, rendezVous))
                 .isEqualTo("ABSENT");
     }
+
+    @Test
+    void marquerUnePresence_passeLeRendezVousAHonoreSansPenalite() throws Exception {
+        long patient = creerPatient();
+        long creneau = creerCreneau(creerMedecin(), jourFutur(9));
+        long rendezVous = idDe(prendreRendezVous(patient, creneau).andExpect(status().isCreated()));
+
+        // l'API refuse les créneaux passés : on recule le rendez-vous directement en base
+        LocalDateTime passe = LocalDateTime.now().minusHours(3);
+        jdbc.update("update rendez_vous set debut = ?, fin = ? where id = ?", passe, passe.plusMinutes(30), rendezVous);
+
+        mvc.perform(post("/api/rendez-vous/{id}/presence", rendezVous))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statut").value("HONORE"));
+
+        mvc.perform(get("/api/patients/{id}", patient))
+                .andExpect(jsonPath("$.pointsPenalite").value(0));
+        assertThat(jdbc.queryForObject("select statut from rendez_vous where id = ?", String.class, rendezVous))
+                .isEqualTo("HONORE");
+    }
+
+    @Test
+    void marquerUnePresence_estRefuseAvantLHeureDuRendezVous() throws Exception {
+        long patient = creerPatient();
+        long creneau = creerCreneau(creerMedecin(), jourFutur(9));
+        long rendezVous = idDe(prendreRendezVous(patient, creneau).andExpect(status().isCreated()));
+
+        mvc.perform(post("/api/rendez-vous/{id}/presence", rendezVous))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message", containsString("pas encore eu lieu")));
+
+        assertThat(jdbc.queryForObject("select statut from rendez_vous where id = ?", String.class, rendezVous))
+                .isEqualTo("CONFIRME");
+    }
+
 }

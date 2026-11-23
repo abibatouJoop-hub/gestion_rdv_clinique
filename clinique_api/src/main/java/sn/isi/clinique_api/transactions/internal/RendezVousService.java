@@ -150,6 +150,24 @@ public class RendezVousService {
         return versDto(rdv);
     }
 
+    @Transactional
+    public RendezVousDto marquerPresent(Long id) {
+        return marquerPresent(id, null);
+    }
+
+    @Transactional
+    public RendezVousDto marquerPresent(Long id, Long medecinId) {
+        RendezVous rdv = chercherPour(id, medecinId);
+        if (rdv.getStatut() != StatutRendezVous.CONFIRME) {
+            throw new ConflitException("Seul un rendez-vous confirmé peut être marqué présent");
+        }
+        if (rdv.getDebut().isAfter(LocalDateTime.now())) {
+            throw new ConflitException("Ce rendez-vous n'a pas encore eu lieu");
+        }
+        rdv.setStatut(StatutRendezVous.HONORE);
+        return versDto(rdv);
+    }
+
     // =====================================================================
     // F4 : liste d'attente
     // =====================================================================

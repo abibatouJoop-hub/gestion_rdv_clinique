@@ -27,10 +27,14 @@ class SecurityConfig {
                         .requestMatchers("/api/auth/moi").authenticated()
                         .requestMatchers("/api/utilisateurs/**").hasRole("ADMIN")
 
+
+
                         // la liste d'attente d'abord : règle plus précise que /api/rendez-vous/**
                         .requestMatchers("/api/rendez-vous/attente/**").hasAnyRole("ADMIN", "SECRETAIRE")
                         .requestMatchers(HttpMethod.GET, "/api/rendez-vous/**").hasAnyRole("ADMIN", "SECRETAIRE", "MEDECIN")
                         .requestMatchers(HttpMethod.POST, "/api/rendez-vous/*/absence").hasAnyRole("ADMIN", "SECRETAIRE", "MEDECIN")
+                        .requestMatchers(HttpMethod.POST, "/api/rendez-vous/*/presence")
+                        .hasAnyRole("ADMIN", "SECRETAIRE", "MEDECIN")
                         .requestMatchers("/api/rendez-vous/**").hasAnyRole("ADMIN", "SECRETAIRE")
 
                         .requestMatchers(HttpMethod.GET, "/api/patients/*").hasAnyRole("ADMIN", "SECRETAIRE", "MEDECIN")

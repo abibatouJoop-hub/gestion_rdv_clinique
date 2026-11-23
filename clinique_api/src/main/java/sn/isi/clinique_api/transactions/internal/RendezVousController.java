@@ -107,6 +107,16 @@ public class RendezVousController {
         return service.marquerAbsent(id, contexte.medecinImpose().orElse(null));
     }
 
+    @PostMapping("/{id}/presence")
+    @Operation(summary = "Marquer un patient présent",
+            description = "Possible seulement après l'heure du rendez-vous. Le rendez-vous passe au statut HONORE, sans pénalité.")
+    @ApiResponse(responseCode = "200", description = "Présence enregistrée")
+    @ApiResponse(responseCode = "404", description = "Rendez-vous introuvable")
+    @ApiResponse(responseCode = "409", description = "Rendez-vous non confirmé ou pas encore passé")
+    public RendezVousDto marquerPresent(@PathVariable Long id) {
+        return service.marquerPresent(id, contexte.medecinImpose().orElse(null));
+    }
+
     @PostMapping("/attente")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "S'inscrire en liste d'attente",
