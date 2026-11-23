@@ -16,4 +16,15 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Page<Notification> rechercher(@Param("patientId") Long patientId,
                                   @Param("seulementNonLues") boolean seulementNonLues,
                                   Pageable pageable);
+
+    @Query("""
+        select n from Notification n
+        where (:patientId is null or n.patientId = :patientId)
+          and (:medecinId is null or n.medecinId = :medecinId)
+          and (:seulementNonLues = false or n.lue = false)
+        """)
+    Page<Notification> rechercher(@Param("patientId") Long patientId,
+                                  @Param("medecinId") Long medecinId,
+                                  @Param("seulementNonLues") boolean seulementNonLues,
+                                  Pageable pageable);
 }

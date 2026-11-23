@@ -1,5 +1,6 @@
 package sn.isi.clinique_api.transactions.internal;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springdoc.core.annotations.ParameterObject;
@@ -7,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,6 +23,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import sn.isi.clinique_api.securite.api.ContexteSecurite;
 import sn.isi.clinique_api.transactions.api.AttenteDto;
 import sn.isi.clinique_api.transactions.api.RendezVousDto;
 import sn.isi.clinique_api.transactions.api.RendezVousRequest;
@@ -32,9 +35,11 @@ import sn.isi.clinique_api.transactions.api.StatutRendezVous;
 public class RendezVousController {
 
     private final RendezVousService service;
+    private final ContexteSecurite contexte;
 
-    public RendezVousController(RendezVousService service) {
+    public RendezVousController(RendezVousService service, ContexteSecurite contexte) {
         this.service = service;
+        this.contexte = contexte;
     }
 
     @GetMapping
@@ -48,7 +53,7 @@ public class RendezVousController {
             @Parameter(description = "Statut : CONFIRME, ANNULE, ABSENT ou HONORE")
             @RequestParam(required = false) StatutRendezVous statut,
             @ParameterObject @PageableDefault(size = 20, sort = "debut") Pageable pageable) {
-        return new PagedModel<>(service.lister(patientId, statut, pageable));
+        return new PagedModel<>(service.lister(patientId, statut, contexte.medecinImpose().orElse(null), pageable));
     }
 
     @GetMapping("/{id}")
@@ -56,7 +61,8 @@ public class RendezVousController {
     @ApiResponse(responseCode = "200", description = "Rendez-vous trouvé")
     @ApiResponse(responseCode = "404", description = "Rendez-vous introuvable")
     public RendezVousDto trouver(@PathVariable Long id) {
-        return service.trouver(id);
+
+        return service.trouver(id, contexte.medecinImpose().orElse(null));
     }
 
     @PostMapping
@@ -97,7 +103,8 @@ public class RendezVousController {
     @ApiResponse(responseCode = "404", description = "Rendez-vous introuvable")
     @ApiResponse(responseCode = "409", description = "Rendez-vous non confirmé ou pas encore passé")
     public RendezVousDto marquerAbsent(@PathVariable Long id) {
-        return service.marquerAbsent(id);
+
+        return service.marquerAbsent(id, contexte.medecinImpose().orElse(null));
     }
 
     @PostMapping("/attente")
@@ -112,6 +119,23 @@ public class RendezVousController {
         return service.inscrireAttente(requete);
     }
 
+    @GetMapping("/attente")
+    @Operation(summary = "Consulter la liste d'attente",
+            description = "Toutes les inscriptions, groupées par créneau, avec la position de chaque patient dans la file.")
+    @ApiResponse(responseCode = "200", description = "Inscriptions en liste d'attente")
+    public List<AttenteDto> listerAttente() {
+        return service.listerAttente();
+    }
+
+    @DeleteMapping("/attente/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Retirer un patient de la liste d'attente")
+    @ApiResponse(responseCode = "204", description = "Inscription retirée")
+    @ApiResponse(responseCode = "404", description = "Inscription introuvable")
+    public void retirerAttente(@PathVariable Long id) {
+        service.retirerAttente(id);
+    }
+
     @PostMapping("/rappels")
     @Operation(summary = "Déclencher les rappels J-1",
             description = "Envoie un rappel pour chaque rendez-vous confirmé dans les 24 prochaines heures qui n'en a pas "
@@ -120,4 +144,6 @@ public class RendezVousController {
     public Map<String, Integer> declencherRappels() {
         return Map.of("rappelsEnvoyes", service.envoyerRappels());
     }
+
+
 }

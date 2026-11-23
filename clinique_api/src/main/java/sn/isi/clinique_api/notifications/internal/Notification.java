@@ -20,8 +20,13 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "patient_id", nullable = false)
+    /** Renseigné pour une notification destinée à un patient (sinon null). */
+    @Column(name = "patient_id")
     private Long patientId;
+
+    /** Renseigné pour une notification destinée à un médecin (sinon null). */
+    @Column(name = "medecin_id")
+    private Long medecinId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 40)
@@ -48,31 +53,18 @@ public class Notification {
         this.creeLe = LocalDateTime.now();
     }
 
-    public Long getId() {
-        return id;
+    public static Notification pourMedecin(Long medecinId, TypeNotification type, String message) {
+        Notification n = new Notification(null, type, message);
+        n.medecinId = medecinId;
+        return n;
     }
 
-    public Long getPatientId() {
-        return patientId;
-    }
-
-    public TypeNotification getType() {
-        return type;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public boolean isLue() {
-        return lue;
-    }
-
-    public void marquerLue() {
-        this.lue = true;
-    }
-
-    public LocalDateTime getCreeLe() {
-        return creeLe;
-    }
+    public Long getId() { return id; }
+    public Long getPatientId() { return patientId; }
+    public Long getMedecinId() { return medecinId; }
+    public TypeNotification getType() { return type; }
+    public String getMessage() { return message; }
+    public boolean isLue() { return lue; }
+    public void marquerLue() { this.lue = true; }
+    public LocalDateTime getCreeLe() { return creeLe; }
 }

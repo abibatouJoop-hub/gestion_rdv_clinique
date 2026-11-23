@@ -16,6 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -23,8 +24,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import com.jayway.jsonpath.JsonPath;
 
 @SpringBootTest
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)   // remplace @AutoConfigureMockMvc si elle est déjà là
 @ActiveProfiles("test")
+@TestPropertySource(properties = "app.jwt.secret=cle-de-test-uniquement-0123456789-abcdefghijklmnop")
 public abstract class IntegrationTestBase {
 
     // Un seul PostgreSQL pour toute la suite de tests (supprimé automatiquement à la fin)

@@ -38,4 +38,16 @@ public interface RendezVousRepository extends JpaRepository<RendezVous, Long> {
 
     List<RendezVous> findByStatutAndRappelEnvoyeFalseAndDebutBetween(
             StatutRendezVous statut, LocalDateTime min, LocalDateTime max);
+
+    @Query("""
+        select r from RendezVous r
+        where r.medecinId = :medecinId
+          and (:patientId is null or r.patientId = :patientId)
+          and (:filtrer = false or r.statut = :statut)
+        """)
+    Page<RendezVous> rechercherParMedecin(@Param("medecinId") Long medecinId,
+                                          @Param("patientId") Long patientId,
+                                          @Param("filtrer") boolean filtrer,
+                                          @Param("statut") StatutRendezVous statut,
+                                          Pageable pageable);
 }

@@ -8,5 +8,7 @@ public interface ListeAttenteRepository extends JpaRepository<ListeAttente, Long
 
     List<ListeAttente> findByCreneauIdOrderByInscritLeAscIdAsc(Long creneauId);
 
+    List<ListeAttente> findAllByOrderByCreneauIdAscInscritLeAscIdAsc();
+
     boolean existsByPatientIdAndCreneauId(Long patientId, Long creneauId);
 }

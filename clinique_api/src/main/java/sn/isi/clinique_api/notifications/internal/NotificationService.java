@@ -19,16 +19,25 @@ public class NotificationService {
         this.repository = repository;
     }
 
-    public Page<NotificationDto> lister(Long patientId, boolean seulementNonLues, Pageable pageable) {
-        return repository.rechercher(patientId, seulementNonLues, pageable).map(this::versDto);
+    public Page<NotificationDto> lister(Long patientId, Long medecinId, boolean seulementNonLues, Pageable pageable) {
+        return repository.rechercher(patientId, medecinId, seulementNonLues, pageable).map(this::versDto);
     }
 
+    /** medecinId non nul : seul le médecin destinataire peut marquer la notification comme lue. */
     @Transactional
-    public NotificationDto marquerLue(Long id) {
+    public NotificationDto marquerLue(Long id, Long medecinId) {
         Notification notification = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Notification introuvable : " + id));
+        if (medecinId != null && !medecinId.equals(notification.getMedecinId())) {
+            throw new NotFoundException("Notification introuvable : " + id);
+        }
         notification.marquerLue();
         return versDto(notification);
+    }
+
+    private NotificationDto versDto(Notification n) {
+        return new NotificationDto(n.getId(), n.getPatientId(), n.getMedecinId(), n.getType(),
+                n.getMessage(), n.isLue(), n.getCreeLe());
     }
 
     @Transactional
@@ -36,8 +45,8 @@ public class NotificationService {
         repository.save(new Notification(patientId, type, message));
     }
 
-    private NotificationDto versDto(Notification n) {
-        return new NotificationDto(n.getId(), n.getPatientId(), n.getType(),
-                n.getMessage(), n.isLue(), n.getCreeLe());
+    @Transactional
+    public void enregistrerPourMedecin(Long medecinId, TypeNotification type, String message) {
+        repository.save(Notification.pourMedecin(medecinId, type, message));
     }
 }

@@ -1,6 +1,7 @@
 package sn.isi.clinique_api.transactions.internal;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,13 +51,25 @@ public class RendezVousService {
     // =====================================================================
 
     public Page<RendezVousDto> lister(Long patientId, StatutRendezVous statut, Pageable pageable) {
+        return lister(patientId, statut, null, pageable);
+    }
+
+    /** medecinId non nul : on ne retourne que les rendez-vous de ce médecin. */
+    public Page<RendezVousDto> lister(Long patientId, StatutRendezVous statut, Long medecinId, Pageable pageable) {
         boolean filtrer = (statut != null);
         StatutRendezVous valeur = filtrer ? statut : StatutRendezVous.CONFIRME;
-        return repository.rechercher(patientId, filtrer, valeur, pageable).map(this::versDto);
+        if (medecinId == null) {
+            return repository.rechercher(patientId, filtrer, valeur, pageable).map(this::versDto);
+        }
+        return repository.rechercherParMedecin(medecinId, patientId, filtrer, valeur, pageable).map(this::versDto);
     }
 
     public RendezVousDto trouver(Long id) {
-        return versDto(chercher(id));
+        return trouver(id, null);
+    }
+
+    public RendezVousDto trouver(Long id, Long medecinId) {
+        return versDto(chercherPour(id, medecinId));
     }
 
     // =====================================================================
@@ -81,7 +94,7 @@ public class RendezVousService {
 
         RendezVous rdv = repository.save(new RendezVous(patient.id(), creneau.id(),
                 creneau.medecinId(), creneau.debut(), creneau.fin()));
-        evenements.publishEvent(new RendezVousPris(rdv.getId(), patient.id(), rdv.getDebut()));
+        evenements.publishEvent(new RendezVousPris(rdv.getId(), patient.id(), rdv.getDebut(), rdv.getMedecinId()));
         return versDto(rdv);
     }
 
@@ -112,7 +125,7 @@ public class RendezVousService {
             patients.ajouterPenalite(rdv.getPatientId(), PENALITE_ANNULATION_TARDIVE);
         }
         creneaux.liberer(rdv.getCreneauId());
-        evenements.publishEvent(new RendezVousAnnule(rdv.getId(), rdv.getPatientId(), rdv.getDebut()));
+        evenements.publishEvent(new RendezVousAnnule(rdv.getId(), rdv.getPatientId(), rdv.getDebut(), rdv.getMedecinId()));
 
         promouvoirListeAttente(rdv);
         return versDto(rdv);
@@ -120,7 +133,12 @@ public class RendezVousService {
 
     @Transactional
     public RendezVousDto marquerAbsent(Long id) {
-        RendezVous rdv = chercher(id);
+        return marquerAbsent(id, null);
+    }
+
+    @Transactional
+    public RendezVousDto marquerAbsent(Long id, Long medecinId) {
+        RendezVous rdv = chercherPour(id, medecinId);
         if (rdv.getStatut() != StatutRendezVous.CONFIRME) {
             throw new ConflitException("Seul un rendez-vous confirmé peut être marqué absent");
         }
@@ -159,6 +177,29 @@ public class RendezVousService {
         return new AttenteDto(entree.getId(), patient.id(), creneau.id(), position(entree));
     }
 
+    /** Toutes les inscriptions en liste d'attente, groupées par créneau, avec leur position dans la file. */
+    public List<AttenteDto> listerAttente() {
+        List<AttenteDto> resultat = new ArrayList<>();
+        Long creneauCourant = null;
+        int position = 0;
+        for (ListeAttente entree : attenteRepository.findAllByOrderByCreneauIdAscInscritLeAscIdAsc()) {
+            if (!entree.getCreneauId().equals(creneauCourant)) {
+                creneauCourant = entree.getCreneauId();
+                position = 0;
+            }
+            position++;
+            resultat.add(new AttenteDto(entree.getId(), entree.getPatientId(), entree.getCreneauId(), position));
+        }
+        return resultat;
+    }
+
+    @Transactional
+    public void retirerAttente(Long id) {
+        ListeAttente entree = attenteRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Inscription en liste d'attente introuvable : " + id));
+        attenteRepository.delete(entree);
+    }
+
     /** Appelée après une annulation : le premier patient éligible de la file obtient le créneau. */
     private void promouvoirListeAttente(RendezVous annule) {
         List<ListeAttente> file =
@@ -179,7 +220,7 @@ public class RendezVousService {
                     annule.getCreneauId(), annule.getMedecinId(), annule.getDebut(), annule.getFin()));
             attenteRepository.delete(entree);
             evenements.publishEvent(
-                    new RendezVousPris(nouveau.getId(), candidat.get().id(), nouveau.getDebut()));
+                    new RendezVousPris(nouveau.getId(), candidat.get().id(), nouveau.getDebut(), nouveau.getMedecinId()));
             return;
         }
     }
@@ -219,6 +260,15 @@ public class RendezVousService {
     private RendezVous chercher(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Rendez-vous introuvable : " + id));
+    }
+
+    /** Si medecinId est fourni, un rendez-vous d'un autre médecin est traité comme inexistant (404). */
+    private RendezVous chercherPour(Long id, Long medecinId) {
+        RendezVous rdv = chercher(id);
+        if (medecinId != null && !medecinId.equals(rdv.getMedecinId())) {
+            throw new NotFoundException("Rendez-vous introuvable : " + id);
+        }
+        return rdv;
     }
 
     private RendezVousDto versDto(RendezVous r) {
